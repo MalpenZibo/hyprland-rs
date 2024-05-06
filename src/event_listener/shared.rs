@@ -184,29 +184,29 @@ impl ActiveWindowState {
         }
         Ok(())
     }
-    pub async fn execute_async_mut(
-        &mut self,
-        listener: &mut super::EventListenerMutable,
-    ) -> crate::Result<()> {
-        use ActiveWindowValue::{None, Queued};
-        let data = (&self.title, &self.class, &self.addr);
-        if let (Queued(ref title), Queued(ref class), Queued(ref addr)) = data {
-            listener
-                .event_executor_async(Event::ActiveWindowChangedMerged(Some(WindowEventData {
-                    window_class: class.to_string(),
-                    window_title: title.to_string(),
-                    window_address: addr.clone(),
-                })))
-                .await?;
-            self.reset();
-        } else if let (None, None, None) = data {
-            listener
-                .event_executor_async(Event::ActiveWindowChangedMerged(Option::None))
-                .await?;
-        }
-        Ok(())
-    }
-
+    // pub async fn execute_async_mut(
+    //     &mut self,
+    //     listener: &mut super::EventListenerMutable,
+    // ) -> crate::Result<()> {
+    //     use ActiveWindowValue::{None, Queued};
+    //     let data = (&self.title, &self.class, &self.addr);
+    //     if let (Queued(ref title), Queued(ref class), Queued(ref addr)) = data {
+    //         listener
+    //             .event_executor_async(Event::ActiveWindowChangedMerged(Some(WindowEventData {
+    //                 window_class: class.to_string(),
+    //                 window_title: title.to_string(),
+    //                 window_address: addr.clone(),
+    //             })))
+    //             .await?;
+    //         self.reset();
+    //     } else if let (None, None, None) = data {
+    //         listener
+    //             .event_executor_async(Event::ActiveWindowChangedMerged(Option::None))
+    //             .await?;
+    //     }
+    //     Ok(())
+    // }
+    //
     pub fn ready(&self) -> bool {
         !self.class.is_empty() && !self.title.is_empty() && !self.addr.is_empty()
     }
@@ -270,8 +270,11 @@ pub(crate) type AsyncClosures<T> = Vec<AsyncClosure<T>>;
 #[allow(clippy::type_complexity)]
 pub(crate) struct Events {
     pub(crate) workspace_changed_events: Closures<WorkspaceType>,
+    pub(crate) workspace_changed_events_v2: Closures<WorkspaceEventData>,
     pub(crate) workspace_added_events: Closures<WorkspaceType>,
+    pub(crate) workspace_added_events_v2: Closures<WorkspaceEventData>,
     pub(crate) workspace_destroyed_events: Closures<WorkspaceType>,
+    pub(crate) workspace_destroyed_events_v2: Closures<WorkspaceEventData>,
     pub(crate) workspace_moved_events: Closures<MonitorEventData>,
     pub(crate) workspace_rename_events: Closures<WorkspaceRenameEventData>,
     pub(crate) active_monitor_changed_events: Closures<MonitorEventData>,
@@ -284,6 +287,7 @@ pub(crate) struct Events {
     pub(crate) window_open_events: Closures<WindowOpenEvent>,
     pub(crate) window_close_events: Closures<Address>,
     pub(crate) window_moved_events: Closures<WindowMoveEvent>,
+    pub(crate) window_moved_events_v2: Closures<WindowMoveEventV2>,
     pub(crate) layer_open_events: Closures<String>,
     pub(crate) layer_closed_events: Closures<String>,
     pub(crate) float_state_events: Closures<WindowFloatEventData>,
@@ -296,8 +300,11 @@ pub(crate) struct Events {
 #[allow(clippy::type_complexity)]
 pub(crate) struct AsyncEvents {
     pub(crate) workspace_changed_events: AsyncClosures<WorkspaceType>,
+    pub(crate) workspace_changed_events_v2: AsyncClosures<WorkspaceEventData>,
     pub(crate) workspace_added_events: AsyncClosures<WorkspaceType>,
+    pub(crate) workspace_added_events_v2: AsyncClosures<WorkspaceEventData>,
     pub(crate) workspace_destroyed_events: AsyncClosures<WorkspaceType>,
+    pub(crate) workspace_destroyed_events_v2: AsyncClosures<WorkspaceEventData>,
     pub(crate) workspace_moved_events: AsyncClosures<MonitorEventData>,
     pub(crate) workspace_rename_events: AsyncClosures<WorkspaceRenameEventData>,
     pub(crate) active_monitor_changed_events: AsyncClosures<MonitorEventData>,
@@ -310,6 +317,7 @@ pub(crate) struct AsyncEvents {
     pub(crate) window_open_events: AsyncClosures<WindowOpenEvent>,
     pub(crate) window_close_events: AsyncClosures<Address>,
     pub(crate) window_moved_events: AsyncClosures<WindowMoveEvent>,
+    pub(crate) window_moved_events_v2: AsyncClosures<WindowMoveEventV2>,
     pub(crate) layer_open_events: AsyncClosures<String>,
     pub(crate) layer_closed_events: AsyncClosures<String>,
     pub(crate) float_state_events: AsyncClosures<WindowFloatEventData>,
@@ -322,6 +330,15 @@ pub(crate) struct AsyncEvents {
 /// Event data for renameworkspace event
 #[derive(Debug, Clone)]
 pub struct WorkspaceRenameEventData {
+    /// Workspace id
+    pub workspace_id: WorkspaceId,
+    /// Workspace name content
+    pub workspace_name: String,
+}
+
+/// Event data for a workspace event
+#[derive(Debug, Clone)]
+pub struct WorkspaceEventData {
     /// Workspace id
     pub workspace_id: WorkspaceId,
     /// Workspace name content
@@ -351,6 +368,18 @@ pub struct ScreencastEventData {
 pub struct WindowMoveEvent {
     /// Window address
     pub window_address: Address,
+    /// The workspace name
+    pub workspace_name: String,
+}
+
+/// The data for the event executed when moving a window to a new workspace
+#[derive(Clone, Debug)]
+pub struct WindowMoveEventV2 {
+    /// Window address
+    pub window_address: Address,
+
+    pub workspace_id: WorkspaceId,
+
     /// The workspace name
     pub workspace_name: String,
 }
@@ -573,8 +602,11 @@ unsafe impl Sync for WindowFloatEventData {}
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
     WorkspaceChanged(WorkspaceType),
+    WorkspaceChangedV2(WorkspaceEventData),
     WorkspaceDeleted(WorkspaceType),
+    WorkspaceDeletedV2(WorkspaceEventData),
     WorkspaceAdded(WorkspaceType),
+    WorkspaceAddedV2(WorkspaceEventData),
     WorkspaceMoved(MonitorEventData),
     WorkspaceRename(WorkspaceRenameEventData),
     ActiveWindowChangedV1(Option<(String, String)>),
@@ -587,6 +619,7 @@ pub(crate) enum Event {
     WindowOpened(WindowOpenEvent),
     WindowClosed(Address),
     WindowMoved(WindowMoveEvent),
+    WindowMovedV2(WindowMoveEventV2),
     LayoutChanged(LayoutEvent),
     SubMapChanged(String),
     LayerOpened(String),
@@ -645,8 +678,11 @@ static CHECK_TABLE: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
 #[derive(PartialEq, Eq, Hash)]
 enum ParsedEventType {
     WorkspaceChanged,
+    WorkspaceChangedV2,
     WorkspaceDeleted,
+    WorkspaceDeletedV2,
     WorkspaceAdded,
+    WorkspaceAddedV2,
     WorkspaceMoved,
     WorkspaceRename,
     ActiveWindowChangedV1,
@@ -658,6 +694,7 @@ enum ParsedEventType {
     WindowOpened,
     WindowClosed,
     WindowMoved,
+    WindowMovedV2,
     LayoutChanged,
     SubMapChanged,
     LayerOpened,
@@ -679,12 +716,24 @@ pub(crate) fn event_parser(event: String) -> crate::Result<Vec<Event>> {
                 r"\bworkspace>>(?P<workspace>.*)"
             ),
             (
+                ParsedEventType::WorkspaceChangedV2,
+                r"\bworkspacev2>>(?P<id>.*),(?P<name>.*)"
+            ),
+            (
                 ParsedEventType::WorkspaceDeleted,
                 r"destroyworkspace>>(?P<workspace>.*)"
             ),
             (
+                ParsedEventType::WorkspaceDeletedV2,
+                r"\bdestroyworkspacev2>>(?P<id>.*),(?P<name>.*)"
+            ),
+            (
                 ParsedEventType::WorkspaceAdded,
                 r"createworkspace>>(?P<workspace>.*)"
+            ),
+            (
+                ParsedEventType::WorkspaceAddedV2,
+                r"createworkspacev2>>(?P<id>.*),(?P<name>.*)"
             ),
             (
                 ParsedEventType::WorkspaceMoved,
@@ -729,6 +778,10 @@ pub(crate) fn event_parser(event: String) -> crate::Result<Vec<Event>> {
             (
                 ParsedEventType::WindowMoved,
                 r"movewindow>>(?P<address>.*),(?P<workspace>.*)"
+            ),
+            (
+                ParsedEventType::WindowMovedV2,
+                r"movewindowv2>>(?P<address>.*),(?P<workspace_id>.*)(?P<workspace_name>.*)"
             ),
             (
                 ParsedEventType::LayoutChanged,
@@ -819,13 +872,43 @@ pub(crate) fn event_parser(event: String) -> crate::Result<Vec<Event>> {
                 };
                 events.push(Event::WorkspaceChanged(workspace));
             }
+            ParsedEventType::WorkspaceChangedV2 => {
+                let id = &captures["id"];
+                let name = &captures["name"];
+                events.push(Event::WorkspaceChangedV2(WorkspaceEventData {
+                    workspace_id: id
+                        .parse::<WorkspaceId>()
+                        .map_err(|e| HyprError::IoError(std::io::Error::other(e)))?,
+                    workspace_name: name.to_string(),
+                }));
+            }
             ParsedEventType::WorkspaceDeleted => {
                 let workspace = parse_string_as_work(captures["workspace"].to_string());
                 events.push(Event::WorkspaceDeleted(workspace));
             }
+            ParsedEventType::WorkspaceDeletedV2 => {
+                let id = &captures["id"];
+                let name = &captures["name"];
+                events.push(Event::WorkspaceDeletedV2(WorkspaceEventData {
+                    workspace_id: id
+                        .parse::<WorkspaceId>()
+                        .map_err(|e| HyprError::IoError(std::io::Error::other(e)))?,
+                    workspace_name: name.to_string(),
+                }));
+            }
             ParsedEventType::WorkspaceAdded => {
                 let workspace = parse_string_as_work(captures["workspace"].to_string());
                 events.push(Event::WorkspaceAdded(workspace));
+            }
+            ParsedEventType::WorkspaceAddedV2 => {
+                let id = &captures["id"];
+                let name = &captures["name"];
+                events.push(Event::WorkspaceAddedV2(WorkspaceEventData {
+                    workspace_id: id
+                        .parse::<WorkspaceId>()
+                        .map_err(|e| HyprError::IoError(std::io::Error::other(e)))?,
+                    workspace_name: name.to_string(),
+                }));
             }
             ParsedEventType::WorkspaceMoved => {
                 let workspace = parse_string_as_work(captures["workspace"].to_string());
@@ -907,6 +990,18 @@ pub(crate) fn event_parser(event: String) -> crate::Result<Vec<Event>> {
                 events.push(Event::WindowMoved(WindowMoveEvent {
                     window_address: Address::new(addr),
                     workspace_name: work.to_string(),
+                }));
+            }
+            ParsedEventType::WindowMovedV2 => {
+                let addr = format_event_addr(&captures["address"]);
+                let work_id = &captures["workspace_id"];
+                let work_name = &captures["workspace_name"];
+                events.push(Event::WindowMovedV2(WindowMoveEventV2 {
+                    window_address: Address::new(addr),
+                    workspace_id: work_id
+                        .parse::<WorkspaceId>()
+                        .map_err(|e| HyprError::IoError(std::io::Error::other(e)))?,
+                    workspace_name: work_name.to_string(),
                 }));
             }
             ParsedEventType::LayoutChanged => {

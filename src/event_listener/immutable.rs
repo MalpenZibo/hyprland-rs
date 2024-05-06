@@ -36,8 +36,11 @@ impl HasExecutor for EventListener {
         use Event::*;
         match event {
             WorkspaceChanged(id) => arm!(id, workspace_changed_events, self),
+            WorkspaceChangedV2(event) => arm!(event, workspace_changed_events_v2, self),
             WorkspaceAdded(id) => arm!(id, workspace_added_events, self),
+            WorkspaceAddedV2(event) => arm!(event, workspace_added_events_v2, self),
             WorkspaceDeleted(id) => arm!(id, workspace_destroyed_events, self),
+            WorkspaceDeletedV2(event) => arm!(event, workspace_destroyed_events_v2, self),
             WorkspaceMoved(evend) => arm!(evend, workspace_moved_events, self),
             WorkspaceRename(even) => arm!(even, workspace_rename_events, self),
             ActiveMonitorChanged(evend) => arm!(evend, active_monitor_changed_events, self),
@@ -49,6 +52,7 @@ impl HasExecutor for EventListener {
             MonitorRemoved(monitor) => arm!(monitor, monitor_removed_events, self),
             WindowClosed(addr) => arm!(addr, window_close_events, self),
             WindowMoved(even) => arm!(even, window_moved_events, self),
+            WindowMovedV2(even) => arm!(even, window_moved_events_v2, self),
             WindowOpened(even) => arm!(even, window_open_events, self),
             LayoutChanged(even) => arm!(even, keyboard_layout_change_events, self),
             SubMapChanged(map) => arm!(map, sub_map_changed_events, self),

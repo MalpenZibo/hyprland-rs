@@ -37,8 +37,11 @@ impl HasAsyncExecutor for AsyncEventListener {
     async fn event_executor_async(&mut self, event: Event) -> crate::Result<()> {
         match event {
             Event::WorkspaceChanged(id) => arm_async!(id, workspace_changed_events, self),
+            Event::WorkspaceChangedV2(event) => arm_async!(event, workspace_changed_events_v2, self),
             Event::WorkspaceAdded(id) => arm_async!(id, workspace_added_events, self),
+            Event::WorkspaceAddedV2(event) => arm_async!(event, workspace_added_events_v2, self),
             Event::WorkspaceDeleted(id) => arm_async!(id, workspace_destroyed_events, self),
+            Event::WorkspaceDeletedV2(event) => arm_async!(event, workspace_destroyed_events_v2, self),
             Event::WorkspaceMoved(evend) => arm_async!(evend, workspace_moved_events, self),
             Event::WorkspaceRename(even) => arm_async!(even, workspace_rename_events, self),
             Event::ActiveMonitorChanged(evend) => arm_async!(evend, active_monitor_changed_events, self),
@@ -50,6 +53,7 @@ impl HasAsyncExecutor for AsyncEventListener {
             Event::MonitorRemoved(monitor) => arm_async!(monitor, monitor_removed_events, self),
             Event::WindowClosed(addr) => arm_async!(addr, window_close_events, self),
             Event::WindowMoved(even) => arm_async!(even, window_moved_events, self),
+            Event::WindowMovedV2(even) => arm_async!(even, window_moved_events_v2, self),
             Event::WindowOpened(even) => arm_async!(even, window_open_events, self),
             Event::LayoutChanged(even) => arm_async!(even, keyboard_layout_change_events, self),
             Event::SubMapChanged(map) => arm_async!(map, sub_map_changed_events, self),
