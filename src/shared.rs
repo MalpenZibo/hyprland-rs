@@ -4,7 +4,7 @@
 pub use async_trait::async_trait;
 use derive_more::Display;
 use serde::{Deserialize, Deserializer, Serialize};
-use std::env::{var, VarError};
+use std::env::{self, var, VarError};
 use std::hash::{Hash, Hasher};
 use std::{error, fmt, io};
 
@@ -276,7 +276,9 @@ pub(crate) fn get_socket_path(socket_type: SocketType) -> String {
         SocketType::Listener => ".socket2.sock",
     };
 
-    format!("/tmp/hypr/{hypr_instance_sig}/{socket_name}")
+    let root = env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+
+    format!("{root}/hypr/{hypr_instance_sig}/{socket_name}")
 }
 
 /// Creates a `CommandContent` instance with the given flag and formatted data.
