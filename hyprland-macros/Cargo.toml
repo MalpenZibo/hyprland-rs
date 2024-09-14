@@ -2,7 +2,7 @@
 name = "hyprland-macros"
 description = "Macros used in hyprland-rs"
 version = "0.4.0-beta.1"
-license.workspace = true
+license = "GPL-3.0-or-later"
 readme = "README.md"
 edition = "2021"
 homepage = "https://github.com/hyprland-community/hyprland-rs/tree/master/hyprland-macros"
